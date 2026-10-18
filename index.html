@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manzil Map · Real Estate Listings Dashboard</title>
+  <meta name="description" content="Interactive real estate listings map with price, type and status filters.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2C9.4 2 4 7.2 4 13.7 4 22 16 30 16 30s12-8 12-16.3C28 7.2 22.6 2 16 2z' fill='%230f6b5c'/%3E%3Cpath d='M10 15l6-5 6 5v6H10z' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=general-sans@500,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/styles.css">
+  <!-- API key lives here (git-ignored). See js/env.example.js -->
+  <script src="./js/env.js"></script>
+</head>
+<body class="is-loading">
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Manzil Map home">
+      <svg class="brand__mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M16 2.5C9.6 2.5 4.5 7.5 4.5 13.8 4.5 21.7 16 29.5 16 29.5s11.5-7.8 11.5-15.7C27.5 7.5 22.4 2.5 16 2.5z" fill="currentColor"/>
+        <path d="M10.5 15.5 16 11l5.5 4.5V21h-11z" fill="var(--color-bg)"/>
+        <rect x="14.5" y="17.5" width="3" height="3.5" fill="currentColor"/>
+      </svg>
+      <span class="brand__name">Manzil<span>Map</span></span>
+    </a>
+    <div class="topbar__right">
+      <span class="provider" id="provider" data-kind="demo"><i></i><span>Loading…</span></span>
+      <button class="btn btn--ghost" id="key-btn" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 9.2-9.2M17 6l3 3M14 9l2 2"/></svg>
+        Map key
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel" aria-label="Filters and results">
+      <section class="stats" aria-label="Summary">
+        <div class="stat"><span class="stat__label">Showing</span><span class="stat__value"><b id="stat-shown">0</b> <small id="stat-total"></small></span></div>
+        <div class="stat"><span class="stat__label">Median sale</span><span class="stat__value" id="stat-sale">—</span></div>
+        <div class="stat"><span class="stat__label">Median rent / yr</span><span class="stat__value" id="stat-rent">—</span></div>
+      </section>
+
+      <section class="group">
+        <label class="group__label" for="location">Location</label>
+        <div class="row">
+          <select id="location" class="select"></select>
+          <button class="btn btn--icon" id="near-me" type="button" title="Center on my location" aria-label="Center on my location">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/></svg>
+          </button>
+        </div>
+      </section>
+
+      <section class="group">
+        <div class="group__head">
+          <span class="group__label">Price range</span>
+          <span class="price-out"><span id="price-min-label">Any</span> – <span id="price-max-label">No max</span></span>
+        </div>
+        <div class="range" id="price-track">
+          <input type="range" id="price-min" aria-label="Minimum price">
+          <input type="range" id="price-max" aria-label="Maximum price">
+        </div>
+        <div class="presets">
+          <button type="button" class="preset" data-preset="0-150000">Under 150K</button>
+          <button type="button" class="preset" data-preset="150000-2000000">150K – 2M</button>
+          <button type="button" class="preset" data-preset="2000000-99000000">2M +</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <span class="group__label">Property type</span>
+        <div class="chips" id="types"></div>
+      </section>
+
+      <section class="group">
+        <span class="group__label">Listing status</span>
+        <div class="statuses" id="statuses"></div>
+      </section>
+
+      <section class="results">
+        <div class="results__head">
+          <h2 id="result-count">0 results</h2>
+          <div class="row row--tight">
+            <button class="btn btn--small" id="fit" type="button">Fit to results</button>
+            <button class="btn btn--small btn--ghost" id="reset" type="button">Reset</button>
+          </div>
+        </div>
+        <ul class="list" id="list">
+          <li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>
+        </ul>
+      </section>
+    </aside>
+
+    <section class="map-wrap" aria-label="Map">
+      <div id="map" class="map"></div>
+      <div class="empty" id="empty" hidden>
+        <strong>No listings match these filters</strong>
+        <span>Widen the price range or turn on more property types.</span>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <dialog class="dialog" id="key-dialog">
+    <form id="key-form" method="dialog">
+      <h2>Google Maps API key</h2>
+      <p class="muted" id="key-source"></p>
+      <label class="group__label" for="key-input">API key</label>
+      <input id="key-input" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="AIzaSy…">
+      <ul class="hints">
+        <li>Applied for this session via the <code>?key=</code> URL parameter. For deployments, set it in <code>js/env.js</code>.</li>
+        <li>Restrict the key to HTTP referrers and to the Maps JavaScript API in Google Cloud Console.</li>
+        <li>Leave empty and save to return to Demo mode (OpenStreetMap).</li>
+      </ul>
+      <div class="dialog__actions">
+        <button type="button" class="btn btn--ghost" id="key-clear">Clear key</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn--ghost" id="key-cancel">Cancel</button>
+        <button type="submit" class="btn btn--primary">Apply key</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
